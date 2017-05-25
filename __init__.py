@@ -28,15 +28,18 @@ y_placeholder = tf.placeholder(tf.float64)
 tau_placeholder = tf.placeholder(tf.float64)
 
 # network architecture
-hidden_weights = tf.Variable(tf.random_normal([input_node_amount, hidden_node_amount], dtype=tf.float64))
-hidden_thresholds = tf.Variable(tf.random_normal([hidden_node_amount], dtype=tf.float64))
+# hidden_weights = tf.Variable(tf.random_normal([input_node_amount, hidden_node_amount], dtype=tf.float64))
+# hidden_thresholds = tf.Variable(tf.random_normal([hidden_node_amount], dtype=tf.float64))
 tau_in_each_hidden_node = np.tile(tau_array, (hidden_node_amount, 1))
-output_weights = tf.Variable(tf.random_normal([hidden_node_amount, output_node_amount], dtype=tf.float64))
-output_threshold = tf.Variable(tf.random_normal([output_node_amount], dtype=tf.float64))
+# output_weights = tf.Variable(tf.random_normal([hidden_node_amount, output_node_amount], dtype=tf.float64))
+# output_threshold = tf.Variable(tf.random_normal([output_node_amount], dtype=tf.float64))
+
+output_threshold = tf.Variable(tf.zeros([output_node_amount], dtype=tf.float64))
+output_weights = tf.Variable(tf.ones([hidden_node_amount, output_node_amount], dtype=tf.float64))
+hidden_thresholds = tf.Variable(tf.zeros([hidden_node_amount], dtype=tf.float64))
+hidden_weights = tf.Variable(tf.ones([input_node_amount, hidden_node_amount], dtype=tf.float64))
 
 hidden_layer_before_tanh = tf.add(tf.matmul(x_placeholder, hidden_weights), hidden_thresholds)
-# exp = tf.exp(-1 * tf.matmul(hidden_layer_before_tanh, tf.pow(2.0, tau_placeholder)))
-# hidden_layer = tf.divide(1.0 - exp, 1.0 + exp)
 hidden_layer = tf.tanh(tf.multiply(hidden_layer_before_tanh, tf.pow(tf.constant(2.0, dtype=tf.float64), tau_placeholder)))
 output_layer = tf.add(tf.matmul(hidden_layer, output_weights), output_threshold)
 
