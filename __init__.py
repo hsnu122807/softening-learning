@@ -109,10 +109,8 @@ for k in range(1, data_size+1):
         new_hidden_weights = np.append(current_hidden_weights, new_hidden_node_neuron_weights.reshape(input_node_amount, 1), axis=1)
         new_hidden_thresholds = np.append(current_hidden_thresholds, new_hidden_node_threshold)
         new_output_weights = np.append(current_output_weights, new_output_node_neuron_weight).reshape(hidden_node_amount,1)
-        tau_array = np.append(tau_array, big_number)
-
-        tau_in_each_hidden_node = tau_array
-
+        tau_in_each_hidden_node = np.append(tau_array, big_number)
+    
         # update weights & threshold in sess
         assign_new_hidden_weight = tf.assign(hidden_weights, new_hidden_weights, validate_shape=False)
         assign_new_hidden_threshold = tf.assign(hidden_thresholds, new_hidden_thresholds, validate_shape=False)
