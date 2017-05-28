@@ -60,20 +60,22 @@ for k in range(1, data_size+1):
     #     print(node.name)
     print(predict_y)
     it = np.nditer(predict_y, flags=['f_index'])
+    i = 1
     while not it.finished:
         if current_stage_y_training_data[it.index] == 1:
             if it[0] < alpha:
                 alpha = it[0]
+                if not i == k:
+                    min_predict_value_in_class_one_of_previous_stage_training_case = alpha
         if current_stage_y_training_data[it.index] == -1:
             if it[0] > beta:
                 beta = it[0]
+                if not i == k:
+                    max_predict_value_in_class_two_of_previous_stage_training_case = beta
+        i += 1
         it.iternext()
     print('alpha= '+str(alpha))
     print('beta= '+str(beta))
-    if k == 2:
-        previous_alpha = alpha
-        previous_beta = beta
-
     if alpha > beta:
         print('new training case is familiar to us, no further learning effort involved.')
     else:
@@ -97,9 +99,9 @@ for k in range(1, data_size+1):
         print('new hidden thresholds:')
         print(new_hidden_node_threshold)
         if current_stage_y_training_data[k-1] == 1:
-            new_output_node_neuron_weight = previous_beta - predict_y[0][k-1]
+            new_output_node_neuron_weight = max_predict_value_in_class_two_of_previous_stage_training_case - predict_y[0][k-1]
         if current_stage_y_training_data[k-1] == -1:
-            new_output_node_neuron_weight = predict_y[0][k-1] - previous_alpha
+            new_output_node_neuron_weight = predict_y[0][k-1] - min_predict_value_in_class_one_of_previous_stage_training_case
         print('predict value of most recent training case: '+str(predict_y[0][k-1]))
         print('previous alpha: '+str(previous_alpha))
         print('previous beta: '+str(previous_beta))
@@ -110,15 +112,12 @@ for k in range(1, data_size+1):
         new_hidden_thresholds = np.append(current_hidden_thresholds, new_hidden_node_threshold)
         new_output_weights = np.append(current_output_weights, new_output_node_neuron_weight).reshape(hidden_node_amount,1)
         tau_in_each_hidden_node = np.append(tau_array, big_number)
-    
+
         # update weights & threshold in sess
         assign_new_hidden_weight = tf.assign(hidden_weights, new_hidden_weights, validate_shape=False)
         assign_new_hidden_threshold = tf.assign(hidden_thresholds, new_hidden_thresholds, validate_shape=False)
         assign_new_output_weights = tf.assign(output_weights, new_output_weights, validate_shape=False)
         sess.run([assign_new_hidden_weight, assign_new_hidden_threshold, assign_new_output_weights])
-
-        previous_alpha = alpha
-        previous_beta = beta
 
     # have some trouble in calculate exp, skip softening process
 
