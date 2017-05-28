@@ -2,7 +2,7 @@
 
 現在big_number設25也沒問題
 
-暫時找不到可以替換variable tensor的方法，目前採用重建session的方式
+替換variable tensor的方式終於找到了(使用tf.assign)
 
 固定了初始權重和偏移量
 
