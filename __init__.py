@@ -198,19 +198,19 @@ for k in range(1, data_size+1):
                     ],
                     0
                 )
-
+                """
                 hidden_thresholds_val, exam_hidden_thresholds_val = sess.run(
                     [hidden_thresholds, exam_hidden_thresholds])
                 print(hidden_thresholds.get_shape())
                 print(exam_hidden_thresholds.get_shape())
                 print(hidden_thresholds_val)
                 print(exam_hidden_thresholds_val)  # 此二者比較可確認 移除 input->hidden thresholds 的正確性
-
+                """
                 exam_tau_array = np.delete(tau_in_each_hidden_node, remove_index)
-
+                """
                 print(tau_in_each_hidden_node)
                 print(exam_tau_array)  # 此二者比較可確認 移除 input->hidden tau 的正確性
-
+                """
                 exam_output_weights = tf.concat(
                     [
                         tf.slice(output_weights, [0, 0], [remove_index, output_node_amount]),
@@ -289,21 +289,17 @@ for k in range(1, data_size+1):
                     print('-' * 10)
                     """
                     # set new hidden node value
-                    hidden_weights = tf.Variable(exam_hidden_weights_val, dtype=tf.float64)
-                    hidden_thresholds = tf.Variable(exam_hidden_thresholds_val, dtype=tf.float64)
                     tau_in_each_hidden_node = exam_tau_array
-                    output_weights = tf.Variable(exam_output_weights_val, dtype=tf.float64)
-                    output_threshold = tf.Variable(output_threshold_val, dtype=tf.float64)  # not changed
-                    # rebuild network after pruning
-                    hidden_layer_before_tanh = tf.add(tf.matmul(x_placeholder, hidden_weights), hidden_thresholds)
-                    hidden_layer = tf.tanh(tf.multiply(hidden_layer_before_tanh,
-                                                       tf.pow(tf.constant(2.0, dtype=tf.float64), tau_placeholder)))
-                    test = tf.matmul(hidden_layer, output_weights)
-                    output_layer = tf.add(test, output_threshold)
+                    current_hidden_weights = exam_hidden_weights_val
+                    current_hidden_thresholds = exam_hidden_thresholds_val
+                    current_output_weights = exam_output_weights_val
+                    current_output_threshold = output_threshold_val
 
-                    init = tf.global_variables_initializer()
-                    sess = tf.Session()
-                    sess.run(init)
+                    assign_new_hidden_weight = tf.assign(hidden_weights, exam_hidden_weights_val, validate_shape=False)
+                    assign_new_hidden_threshold = tf.assign(hidden_thresholds, exam_hidden_thresholds_val, validate_shape=False)
+                    assign_new_output_weights = tf.assign(output_weights, exam_output_weights_val, validate_shape=False)
+                    # tf.assign(output_threshold, output_threshold_val, validate_shape=False)
+                    sess.run([assign_new_hidden_weight, assign_new_hidden_threshold, assign_new_output_weights])
                     break
 
 
