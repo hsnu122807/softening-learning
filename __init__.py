@@ -6,7 +6,7 @@ execute_start_time = time.time()
 
 x_training_data = np.loadtxt("binary_training_input_data.txt", dtype=float, delimiter=" ")
 y_training_data = np.loadtxt("binary_training_output_data.txt", dtype=float, delimiter=" ")
-tau_array = np.array([0.0])
+tau_in_each_hidden_node = np.array([0.0])
 
 
 # Network Parameters
@@ -27,7 +27,7 @@ tau_placeholder = tf.placeholder(tf.float64)
 # network architecture
 output_threshold = tf.Variable(tf.zeros([output_node_amount], dtype=tf.float64))
 output_weights = tf.Variable(tf.ones([hidden_node_amount, output_node_amount], dtype=tf.float64))
-tau_in_each_hidden_node = np.tile(tau_array, (hidden_node_amount, 1))
+tau_in_each_hidden_node = np.tile(tau_in_each_hidden_node, (hidden_node_amount, 1))
 hidden_thresholds = tf.Variable(tf.zeros([hidden_node_amount], dtype=tf.float64))
 hidden_weights = tf.Variable(tf.ones([input_node_amount, hidden_node_amount], dtype=tf.float64))
 
@@ -42,9 +42,6 @@ train = tf.train.GradientDescentOptimizer(learning_rate_eta).minimize(average_sq
 init = tf.global_variables_initializer()
 sess = tf.Session()
 sess.run(init)
-
-previous_alpha = tf.double.max
-previous_beta = tf.double.min
 
 for k in range(1, data_size+1):
     print('-----stage: '+str(k)+'-----')
@@ -76,6 +73,7 @@ for k in range(1, data_size+1):
         it.iternext()
     print('alpha= '+str(alpha))
     print('beta= '+str(beta))
+
     if alpha > beta:
         print('new training case is familiar to us, no further learning effort involved.')
     else:
@@ -103,15 +101,13 @@ for k in range(1, data_size+1):
         if current_stage_y_training_data[k-1] == -1:
             new_output_node_neuron_weight = predict_y[0][k-1] - min_predict_value_in_class_one_of_previous_stage_training_case
         print('predict value of most recent training case: '+str(predict_y[0][k-1]))
-        print('previous alpha: '+str(previous_alpha))
-        print('previous beta: '+str(previous_beta))
         print('new output weight: '+str(new_output_node_neuron_weight))
 
         # combine weights & thresholds
         new_hidden_weights = np.append(current_hidden_weights, new_hidden_node_neuron_weights.reshape(input_node_amount, 1), axis=1)
         new_hidden_thresholds = np.append(current_hidden_thresholds, new_hidden_node_threshold)
         new_output_weights = np.append(current_output_weights, new_output_node_neuron_weight).reshape(hidden_node_amount,1)
-        tau_in_each_hidden_node = np.append(tau_array, big_number)
+        tau_in_each_hidden_node = np.append(tau_in_each_hidden_node, big_number)
 
         # update weights & threshold in sess
         assign_new_hidden_weight = tf.assign(hidden_weights, new_hidden_weights, validate_shape=False)
@@ -119,7 +115,54 @@ for k in range(1, data_size+1):
         assign_new_output_weights = tf.assign(output_weights, new_output_weights, validate_shape=False)
         sess.run([assign_new_hidden_weight, assign_new_hidden_threshold, assign_new_output_weights])
 
-    # have some trouble in calculate exp, skip softening process
+
+        # softening
+        # save variables
+        # saver.save(sess, r"C:\Users\Lee Chia Lun\PycharmProjects\autoencoder\softening_learning\model.ckpt")
+        #
+        # # change tau value of newest hidden node
+        # newest_hidden_node_tau_value = tau_in_each_hidden_node[hidden_node_amount-1]
+        # while newest_hidden_node_tau_value > 1:
+        #     newest_hidden_node_tau_value -= 1
+        #     tau_in_each_hidden_node[hidden_node_amount-1] = newest_hidden_node_tau_value
+        #     softening_success = False
+        #
+        #     for i in range(1000):
+        #         # forward pass
+        #         predict_y = sess.run([output_layer], {x_placeholder: current_stage_x_training_data,
+        #                                               y_placeholder: current_stage_y_training_data,
+        #                                               tau_placeholder: tau_in_each_hidden_node})
+        #
+        #         # check condition L
+        #         alpha = tf.double.max
+        #         beta = tf.double.min
+        #         it = np.nditer(predict_y, flags=['f_index'])
+        #         i = 1
+        #         while not it.finished:
+        #             if current_stage_y_training_data[it.index] == 1:
+        #                 if it[0] < alpha:
+        #                     alpha = it[0]
+        #                     if not i == k:
+        #                         min_predict_value_in_class_one_of_previous_stage_training_case = alpha
+        #             if current_stage_y_training_data[it.index] == -1:
+        #                 if it[0] > beta:
+        #                     beta = it[0]
+        #                     if not i == k:
+        #                         max_predict_value_in_class_two_of_previous_stage_training_case = beta
+        #             i += 1
+        #             it.iternext()
+        #
+        #         if alpha > beta:
+        #             print('softening success, #{0} tau value decrease by 1, current tau value: {1}'.format(hidden_node_amount, newest_hidden_node_tau_value))
+        #             softening_success = True
+        #             saver.save(sess, r"C:\Users\Lee Chia Lun\PycharmProjects\autoencoder\softening_learning\model.ckpt")
+        #             break
+        #         else:
+        #             sess.run(train, feed_dict={x_placeholder: current_stage_x_training_data, y_placeholder: current_stage_y_training_data, tau_placeholder: tau_in_each_hidden_node})
+        #
+        #     if not softening_success:
+        #         saver.restore(sess, r"C:\Users\Lee Chia Lun\PycharmProjects\autoencoder\softening_learning\model.ckpt")
+        #         break
 
         # PRUNING
         """
