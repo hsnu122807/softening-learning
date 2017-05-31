@@ -39,6 +39,8 @@ output_layer = tf.add(tf.matmul(hidden_layer, output_weights), output_threshold)
 average_squared_residual = tf.reduce_mean(tf.reduce_sum(tf.square(y_placeholder - output_layer), reduction_indices=[1]))
 train = tf.train.GradientDescentOptimizer(learning_rate_eta).minimize(average_squared_residual)
 
+saver = tf.train.Saver()
+
 init = tf.global_variables_initializer()
 sess = tf.Session()
 sess.run(init)
@@ -96,10 +98,10 @@ for k in range(1, data_size+1):
         new_hidden_node_threshold = 1 - input_node_amount
         print('new hidden thresholds:')
         print(new_hidden_node_threshold)
-        if current_stage_y_training_data[k-1] == 1:
-            new_output_node_neuron_weight = max_predict_value_in_class_two_of_previous_stage_training_case - predict_y[0][k-1]
-        if current_stage_y_training_data[k-1] == -1:
-            new_output_node_neuron_weight = predict_y[0][k-1] - min_predict_value_in_class_one_of_previous_stage_training_case
+        if current_stage_y_training_data[k - 1] == 1:
+            new_output_node_neuron_weight = predict_y[0][k - 1] - max_predict_value_in_class_two_of_previous_stage_training_case
+        if current_stage_y_training_data[k - 1] == -1:
+            new_output_node_neuron_weight = min_predict_value_in_class_one_of_previous_stage_training_case - predict_y[0][k - 1]
         print('predict value of most recent training case: '+str(predict_y[0][k-1]))
         print('new output weight: '+str(new_output_node_neuron_weight))
 
@@ -115,16 +117,17 @@ for k in range(1, data_size+1):
         assign_new_output_weights = tf.assign(output_weights, new_output_weights, validate_shape=False)
         sess.run([assign_new_hidden_weight, assign_new_hidden_threshold, assign_new_output_weights])
 
-
-        # softening
-        # save variables
+        # # softening
+        # # save variables
         # saver.save(sess, r"C:\Users\Lee Chia Lun\PycharmProjects\autoencoder\softening_learning\model.ckpt")
         #
         # # change tau value of newest hidden node
         # newest_hidden_node_tau_value = tau_in_each_hidden_node[hidden_node_amount-1]
+        # print(newest_hidden_node_tau_value)
         # while newest_hidden_node_tau_value > 1:
         #     newest_hidden_node_tau_value -= 1
         #     tau_in_each_hidden_node[hidden_node_amount-1] = newest_hidden_node_tau_value
+        #     print(tau_in_each_hidden_node)
         #     softening_success = False
         #
         #     for i in range(1000):
@@ -132,26 +135,23 @@ for k in range(1, data_size+1):
         #         predict_y = sess.run([output_layer], {x_placeholder: current_stage_x_training_data,
         #                                               y_placeholder: current_stage_y_training_data,
         #                                               tau_placeholder: tau_in_each_hidden_node})
+        #         print(predict_y)
         #
         #         # check condition L
         #         alpha = tf.double.max
         #         beta = tf.double.min
         #         it = np.nditer(predict_y, flags=['f_index'])
-        #         i = 1
         #         while not it.finished:
         #             if current_stage_y_training_data[it.index] == 1:
         #                 if it[0] < alpha:
         #                     alpha = it[0]
-        #                     if not i == k:
-        #                         min_predict_value_in_class_one_of_previous_stage_training_case = alpha
         #             if current_stage_y_training_data[it.index] == -1:
         #                 if it[0] > beta:
         #                     beta = it[0]
-        #                     if not i == k:
-        #                         max_predict_value_in_class_two_of_previous_stage_training_case = beta
-        #             i += 1
         #             it.iternext()
         #
+        #         print(alpha)
+        #         print(beta)
         #         if alpha > beta:
         #             print('softening success, #{0} tau value decrease by 1, current tau value: {1}'.format(hidden_node_amount, newest_hidden_node_tau_value))
         #             softening_success = True
@@ -301,5 +301,4 @@ for k in range(1, data_size+1):
                     # tf.assign(output_threshold, output_threshold_val, validate_shape=False)
                     sess.run([assign_new_hidden_weight, assign_new_hidden_threshold, assign_new_output_weights])
                     break
-
 
