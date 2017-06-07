@@ -150,7 +150,7 @@ for k in range(1, data_size + 1):
 
             # softening
             # save variables
-            saver.save(sess, r"C:\Users\Lee Chia Lun\PycharmProjects\autoencoder\softening_learning\model.ckpt")
+            saver.save(sess, "/home/ophidian/PycharmProjects/softening-learning/model.ckpt")
 
             # change tau value of newest hidden node
             newest_hidden_node_tau_value = tau_in_each_hidden_node[hidden_node_amount-1]
@@ -187,7 +187,7 @@ for k in range(1, data_size + 1):
                     if alpha > beta:
                         print('softening success, gradient descent trained {0} times, #{1} tau value decrease by 1, current tau value: {2}'.format(i, hidden_node_amount, newest_hidden_node_tau_value))
                         softening_success = True
-                        saver.save(sess, r"C:\Users\Lee Chia Lun\PycharmProjects\autoencoder\softening_learning\model.ckpt")
+                        saver.save(sess, "/home/ophidian/PycharmProjects/softening-learning/model.ckpt")
                         break
                     else:
                         sess.run(train, feed_dict={x_placeholder: current_stage_x_training_data, y_placeholder: current_stage_y_training_data, tau_placeholder: tau_in_each_hidden_node})
@@ -196,7 +196,7 @@ for k in range(1, data_size + 1):
                     print('softening failed, gradient descent trained {0} times, restore #{1} tau value , restore tau value: {2}'.format(
                             i, hidden_node_amount, newest_hidden_node_tau_value+1))
                     tau_in_each_hidden_node[hidden_node_amount - 1] = newest_hidden_node_tau_value+1
-                    saver.restore(sess, r"C:\Users\Lee Chia Lun\PycharmProjects\autoencoder\softening_learning\model.ckpt")
+                    saver.restore(sess, "/home/ophidian/PycharmProjects/softening-learning/model.ckpt")
                     break
 
             # PRUNING
