@@ -200,100 +200,90 @@ for k in range(1, data_size + 1):
                     break
 
             # PRUNING
-            """
-            嚴重問題: session.run 會執行整個定義好的 graph,
-            意思是如果同個session, 每次欲計算不同的部份數值而執行 session.run()
-            預設graph內定義的所有 tensor 都會被再執行, 包括 optimizer, 可能進而影響定義的 tf.Variable
-            可能解決方案: 將 Graph 與 Session 分開定義
-            Reference: https://danijar.com/what-is-a-tensorflow-session/
-            """
             if hidden_node_amount > 1:  # equals to the number of hidden nodes
+                # get current weights & thresholds
+                current_hidden_weights = hidden_weights.eval(sess)
+                current_hidden_thresholds = hidden_thresholds.eval(sess)
+                current_output_weights = output_weights.eval(sess)
+                current_output_threshold = output_threshold.eval(sess)
+                print('#' * 10)
+                print(current_hidden_weights)
+                print(current_hidden_thresholds)
+                print(current_output_weights)
+                print(current_output_threshold)
+                print('#' * 10)
+
                 # then try pruning from the begining hidden node
                 for remove_index in range(hidden_node_amount):
-                    exam_hidden_weights = tf.concat(
-                        [
-                            tf.slice(hidden_weights, [0, 0], [input_node_amount, remove_index]),
-                            tf.slice(hidden_weights, [0, remove_index + 1],
-                                     [input_node_amount, hidden_node_amount - remove_index - 1])
-                        ],
-                        1
-                    )
-                    """
-                    hidden_weights_val, exam_hidden_weights_val, train_val = sess.run([hidden_weights, exam_hidden_weights, train])
-                    print(hidden_weights.get_shape())
-                    print(exam_hidden_weights.get_shape())
-                    print(hidden_weights_val)
-                    print(exam_hidden_weights_val)  # 此二者比較可確認 移除 input->hidden weight 的正確性
-                    print(train_val)
-                    """
-                    exam_hidden_thresholds = tf.concat(
-                        [
-                            tf.slice(hidden_thresholds, [0], [remove_index]),
-                            tf.slice(hidden_thresholds, [remove_index + 1], [hidden_node_amount - remove_index - 1])
-                        ],
-                        0
-                    )
-                    """
-                    hidden_thresholds_val, exam_hidden_thresholds_val = sess.run(
-                        [hidden_thresholds, exam_hidden_thresholds])
-                    print(hidden_thresholds.get_shape())
-                    print(exam_hidden_thresholds.get_shape())
-                    print(hidden_thresholds_val)
-                    print(exam_hidden_thresholds_val)  # 此二者比較可確認 移除 input->hidden thresholds 的正確性
-                    """
-                    exam_tau_array = np.delete(tau_in_each_hidden_node, remove_index)
-                    """
-                    print(tau_in_each_hidden_node)
-                    print(exam_tau_array)  # 此二者比較可確認 移除 input->hidden tau 的正確性
-                    """
-                    exam_output_weights = tf.concat(
-                        [
-                            tf.slice(output_weights, [0, 0], [remove_index, output_node_amount]),
-                            tf.slice(output_weights, [remove_index + 1, 0],
-                                     [hidden_node_amount - remove_index - 1, output_node_amount])
-                        ], 0)
-                    """
-                    output_weights_val, exam_output_weights_val = sess.run([output_weights, exam_output_weights])
-                    print(output_weights.get_shape())
-                    print(exam_output_weights.get_shape())
-                    print(output_weights_val)
-                    print(exam_output_weights_val)  # 此二者比較可確認 移除 hidden->output weight 的正確性
-                    """
+                    # 算出欲檢驗的結構之 weight 和 threshold
+                    exam_hidden_weights = np.concatenate(
+                        (current_hidden_weights[..., :remove_index], current_hidden_weights[..., remove_index + 1:]),
+                        axis=1)
+                    exam_hidden_thresholds = np.concatenate(
+                        (current_hidden_thresholds[:remove_index], current_hidden_thresholds[remove_index + 1:]),
+                        axis=0)
+                    exam_tau = np.delete(tau_in_each_hidden_node, remove_index)
+                    exam_output_weights = np.concatenate(
+                        (current_output_weights[:remove_index], current_output_weights[remove_index + 1:]), axis=0)
 
-                    # build exam Graph
-                    exam_hidden_layer_before_tanh = tf.add(
-                        tf.matmul(
-                            x_placeholder,
-                            exam_hidden_weights),
-                        exam_hidden_thresholds
-                    )
-                    exam_hidden_layer = tf.tanh(
-                        tf.multiply(exam_hidden_layer_before_tanh,
-                                    tf.pow(
-                                        tf.constant(2.0, dtype=tf.float64),
-                                        tau_placeholder)
-                                    )
-                    )
-                    exam_output_layer = tf.add(tf.matmul(exam_hidden_layer, exam_output_weights), output_threshold)
-                    exam_y, exam_hidden_weights_val, exam_hidden_thresholds_val, exam_output_weights_val, output_threshold_val = sess.run(
-                        [  # fetch value of target tensors
-                            exam_output_layer,
-                            exam_hidden_weights,
-                            exam_hidden_thresholds,
-                            exam_output_weights,
-                            output_threshold
+                    # 建立測試 pruning 可行性的 Graph
+                    exam_graph = tf.Graph()
+                    with exam_graph.as_default():
+                        # placeholders
+                        exam_x_holder = tf.placeholder(tf.float64)
+                        exam_y_holder = tf.placeholder(tf.float64)
+                        exam_tau_holder = tf.placeholder(tf.float64)
+
+                        # exam variables
+                        exam_hidden_weights_var = tf.Variable(exam_hidden_weights)
+                        exam_hidden_thresholds_var = tf.Variable(exam_hidden_thresholds)
+                        exam_output_weights_var = tf.Variable(exam_output_weights)
+                        exam_output_threshold_var = tf.Variable(current_output_threshold)
+
+                        # exam tensors
+                        exam_hidden_layer_before_tanh = tf.add(tf.matmul(exam_x_holder, exam_hidden_weights_var), exam_hidden_thresholds_var)
+                        exam_hidden_layer = tf.tanh(
+                            tf.multiply(exam_hidden_layer_before_tanh,
+                                        tf.pow(tf.constant(2.0, dtype=tf.float64), exam_tau_holder)))
+                        exam_output_layer = tf.add(tf.matmul(exam_hidden_layer, exam_output_weights_var), exam_output_threshold_var)
+
+                        # exam goal & optimizer
+                        exam_average_squared_residual = tf.reduce_mean(
+                            tf.reduce_sum(tf.square(exam_y_holder - exam_output_layer), reduction_indices=[1]))
+                        exam_train = tf.train.GradientDescentOptimizer(learning_rate_eta).minimize(exam_average_squared_residual)
+                        exam_init = tf.global_variables_initializer()
+                    # 使用 exam Session 執行 exam Graph
+                    exam_sess = tf.Session(graph=exam_graph)
+                    exam_sess.run(exam_init)
+                    exam_h_w_val, exam_h_t_val, exam_o_w_val, exam_o_t_val, exam_predict_y = exam_sess.run(
+                        [
+                            exam_hidden_weights_var,
+                            exam_hidden_thresholds_var,
+                            exam_output_weights_var,
+                            exam_output_threshold_var,
+                            exam_output_layer
                         ],
-                        {  # input to placeholder
-                            x_placeholder: current_stage_x_training_data,
-                            y_placeholder: current_stage_y_training_data,
-                            tau_placeholder: exam_tau_array
+                        {
+                            exam_x_holder: current_stage_x_training_data,
+                            exam_y_holder: current_stage_y_training_data,
+                            exam_tau_holder: exam_tau
                         }
                     )
+                    print("----- exam #{0} variables -----".format(remove_index))
+                    print(exam_h_w_val)
+                    print(exam_h_t_val)
+                    print(exam_o_w_val)
+                    print(exam_o_t_val)
+                    print("----- exam #{0} predict_y -----".format(remove_index))
+                    print(exam_predict_y)
+                    print("----- end exam #{0} -----".format(remove_index))
+
+                    # check if exam_alpha & exam_beta match condition L
                     # check condition L
                     exam_alpha = tf.double.max
                     exam_beta = tf.double.min
 
-                    it = np.nditer(exam_y, flags=['f_index'])
+                    it = np.nditer(exam_predict_y, flags=['f_index'])
                     while not it.finished:
                         if current_stage_y_training_data[it.index] == 1:
                             if it[0] < exam_alpha:
@@ -303,7 +293,7 @@ for k in range(1, data_size + 1):
                                 exam_beta = it[0]
                         it.iternext()
                     print('-' * 5 + "exam hidden node #{}".format(remove_index) + '-' * 5)
-                    print(list(zip(exam_y, current_stage_y_training_data)))
+                    print(list(zip(exam_predict_y, current_stage_y_training_data)))
                     print('exam_alpha= ' + str(exam_alpha))
                     print('exam_beta= ' + str(exam_beta))
                     if alpha <= beta:
@@ -314,29 +304,18 @@ for k in range(1, data_size + 1):
                         print("pruning current hidden node #{0} won't violate condition L".format(remove_index))
                         print("!!!!! REMOVE hidden node #{0} !!!!!".format(remove_index))
                         hidden_node_amount -= 1
-                        """
-                        print('-' * 5 + 'after pruning' + '-' * 5)
-                        print(exam_hidden_weights_val)
-                        print(exam_hidden_thresholds_val)
-                        print(exam_output_weights_val)
-                        print(output_threshold_val)
-                        print(exam_tau_array)
-                        print('-' * 10)
-                        """
-                        # set new hidden node value
-                        tau_in_each_hidden_node = exam_tau_array
-                        current_hidden_weights = exam_hidden_weights_val
-                        current_hidden_thresholds = exam_hidden_thresholds_val
-                        current_output_weights = exam_output_weights_val
-                        current_output_threshold = output_threshold_val
-
-                        assign_new_hidden_weight = tf.assign(hidden_weights, exam_hidden_weights_val,
-                                                             validate_shape=False)
-                        assign_new_hidden_threshold = tf.assign(hidden_thresholds, exam_hidden_thresholds_val,
-                                                                validate_shape=False)
-                        assign_new_output_weights = tf.assign(output_weights, exam_output_weights_val,
-                                                              validate_shape=False)
-                        # tf.assign(output_threshold, output_threshold_val, validate_shape=False)
-                        sess.run([assign_new_hidden_weight, assign_new_hidden_threshold, assign_new_output_weights])
+                        # 直接使用測試成功的 Session 和 Graph 取代舊的
+                        sess = exam_sess
+                        # 更換 placeholders 操作指標
+                        x_placeholder = exam_x_holder
+                        y_placeholder = exam_y_holder
+                        tau_placeholder = exam_tau_holder
+                        # 更換 variables 操作指標
+                        hidden_weights = exam_hidden_weights_var
+                        hidden_thresholds = exam_hidden_thresholds_var
+                        output_weights = exam_output_weights_var
+                        output_threshold = exam_output_threshold_var
+                        output_layer = exam_output_layer
+                        # modify constant
+                        tau_in_each_hidden_node = exam_tau
                         break
-
