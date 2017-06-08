@@ -39,6 +39,9 @@ output_layer = tf.add(tf.matmul(hidden_layer, output_weights), output_threshold)
 average_squared_residual = tf.reduce_mean(tf.reduce_sum(tf.square(y_placeholder - output_layer), reduction_indices=[1]))
 train = tf.train.GradientDescentOptimizer(learning_rate_eta).minimize(average_squared_residual)
 
+# saver
+saver = tf.train.Saver()
+
 init = tf.global_variables_initializer()
 sess = tf.Session()
 sess.run(init)
@@ -48,6 +51,23 @@ for k in range(1, data_size + 1):
     # take first k training case
     current_stage_x_training_data = x_training_data[:k]
     current_stage_y_training_data = y_training_data[:k]
+
+    # thinking
+    saver.save(sess, r"C:\Users\Lee Chia Lun\PycharmProjects\autoencoder\softening_learning\model.ckpt")
+    for i in range(1000):
+        sess.run(train, feed_dict={x_placeholder: current_stage_x_training_data, y_placeholder: current_stage_y_training_data, tau_placeholder: tau_in_each_hidden_node})
+        current_average_squared_residual = sess.run([average_squared_residual], {x_placeholder: current_stage_x_training_data, y_placeholder: current_stage_y_training_data, tau_placeholder: tau_in_each_hidden_node})
+        # print(current_average_squared_residual)
+        if current_average_squared_residual[0] < 0.1:
+            print('after thinking, average squared residual: ')
+            print(current_average_squared_residual)
+            break
+        if i == 999:
+            print('thinking failed, current average squared residual:')
+            print(current_average_squared_residual)
+            # if needed, restore weight before cramming
+            # print('restore weights.')
+            # saver.restore(sess, r"C:\Users\Lee Chia Lun\PycharmProjects\autoencoder\softening_learning\model.ckpt")
 
     # calculate alpha & beta in condition L
     predict_y = sess.run([output_layer],
@@ -254,6 +274,10 @@ for k in range(1, data_size + 1):
                             tf.reduce_sum(tf.square(exam_y_holder - exam_output_layer), reduction_indices=[1]))
                         exam_train = tf.train.GradientDescentOptimizer(learning_rate_eta).minimize(exam_average_squared_residual)
                         exam_init = tf.global_variables_initializer()
+
+                        # saver
+                        exam_saver = tf.train.Saver()
+
                     # 使用 exam Session 執行 exam Graph
                     exam_sess = tf.Session(graph=exam_graph)
                     exam_sess.run(exam_init)
@@ -318,6 +342,13 @@ for k in range(1, data_size + 1):
                         output_weights = exam_output_weights_var
                         output_threshold = exam_output_threshold_var
                         output_layer = exam_output_layer
+                        # 更換其他操作指標
+                        hidden_layer_before_tanh = exam_hidden_layer_before_tanh
+                        hidden_layer = exam_hidden_layer
+                        output_layer = exam_output_layer
+                        average_squared_residual = exam_average_squared_residual
+                        train = exam_train
+                        saver = exam_saver
                         # modify constant
                         tau_in_each_hidden_node = exam_tau
                         break
