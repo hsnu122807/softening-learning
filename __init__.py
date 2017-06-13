@@ -43,6 +43,16 @@ init = tf.global_variables_initializer()
 sess = tf.Session()
 sess.run(init)
 
+tool_graph = tf.Graph()
+with tool_graph.as_default():
+    tool_alpha = tf.placeholder(tf.float64)
+    tool_beta = tf.placeholder(tf.float64)
+    min_alpha = tf.reduce_min(tool_alpha)
+    max_beta = tf.reduce_max(tool_beta)
+    tool_init = tf.global_variables_initializer()
+tool_sess = tf.Session(graph=tool_graph)
+tool_sess.run([tool_init])
+
 for k in range(1, data_size + 1):
     print('-----stage: ' + str(k) + '-----')
     # take first k training case
@@ -172,15 +182,17 @@ for k in range(1, data_size + 1):
                     # check condition L
                     alpha = tf.double.max
                     beta = tf.double.min
+                    class_1_output = []
+                    class_2_output = []
                     it = np.nditer(predict_y, flags=['f_index'])
                     while not it.finished:
                         if current_stage_y_training_data[it.index] == 1:
-                            if it[0] < alpha:
-                                alpha = it[0]
-                        if current_stage_y_training_data[it.index] == -1:
-                            if it[0] > beta:
-                                beta = it[0]
+                            class_1_output.append(it[0])
+                        else:  # if current_stage_y_training_data[it.index] == -1:
+                            class_2_output.append(it[0])
                         it.iternext()
+                    alpha, beta = tool_sess.run(
+                        [min_alpha, max_beta], {tool_alpha: class_1_output, tool_beta: class_2_output})
 
                     # print(alpha)
                     # print(beta)
@@ -275,16 +287,18 @@ for k in range(1, data_size + 1):
                     # check if exam_alpha & exam_beta match condition L
                     exam_alpha = tf.double.max
                     exam_beta = tf.double.min
+                    class_1_output = []
+                    class_2_output = []
 
                     it = np.nditer(exam_predict_y, flags=['f_index'])
                     while not it.finished:
                         if current_stage_y_training_data[it.index] == 1:
-                            if it[0] < exam_alpha:
-                                exam_alpha = it[0]
-                        if current_stage_y_training_data[it.index] == -1:
-                            if it[0] > exam_beta:
-                                exam_beta = it[0]
+                            class_1_output.append(it[0])
+                        else:  # if current_stage_y_training_data[it.index] == -1:
+                            class_2_output.append(it[0])
                         it.iternext()
+                    exam_alpha, exam_beta = tool_sess.run(
+                        [min_alpha, max_beta], {tool_alpha: class_1_output, tool_beta: class_2_output})
                     print('*' * 5 + "exam removing hidden node #{}".format(remove_index) + '*' * 5)
                     print("***** exam #{0} variables *****".format(remove_index))
                     print(exam_h_w_val)
@@ -297,7 +311,7 @@ for k in range(1, data_size + 1):
                     print(list(zip(exam_predict_y, current_stage_y_training_data)))
                     print('exam_alpha= ' + str(exam_alpha))
                     print('exam_beta= ' + str(exam_beta))
-                    if alpha <= beta:
+                    if exam_alpha <= exam_beta:
                         print('pruning current hidden node #{0} will violate condition L'.format(remove_index))
                         print('*' * 10)
                         continue
