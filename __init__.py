@@ -1,6 +1,7 @@
 import tensorflow as tf
 import numpy as np
 import time
+import random
 
 execute_start_time = time.time()
 
@@ -58,9 +59,33 @@ tool_sess.run([tool_init])
 
 for k in range(1, data_size + 1):
     print('-----stage: ' + str(k) + '-----')
-    # take first k training case
-    current_stage_x_training_data = x_training_data[:k]
-    current_stage_y_training_data = y_training_data[:k]
+
+    if k == 1:
+        # get a random training case
+        r = random.randint(0, data_size-1)
+        current_stage_x_training_data = x_training_data[r-1:r]
+        current_stage_y_training_data = y_training_data[r-1:r]
+    else:
+        # pick k data of smallest residual
+        predict_y = sess.run([output_layer],
+                             {x_placeholder: x_training_data,
+                              y_placeholder: y_training_data,
+                              tau_placeholder: tau_in_each_hidden_node})
+        # print(predict_y[0])
+        # print(x_training_data)
+        # print(y_training_data.reshape((data_size, output_node_amount)))
+        concat_residual_and_x = np.concatenate((predict_y[0], x_training_data), axis=1)
+        concat_residual_and_y = np.concatenate((predict_y[0], y_training_data.reshape((data_size, output_node_amount))), axis=1)
+        sort_concat_x = concat_residual_and_x[np.argsort(concat_residual_and_x[:, 0])]
+        sort_concat_y = concat_residual_and_y[np.argsort(concat_residual_and_y[:, 0])]
+        x_training_data_sort_by_residual = np.delete(sort_concat_x, 0, axis=1)
+        y_training_data_sort_by_residual = np.delete(sort_concat_y, 0, axis=1)
+        # print(sort_concat_x)
+        # print(sort_concat_y)
+        # print(x_training_data_sort_by_residual)
+        # print(y_training_data_sort_by_residual)
+        current_stage_x_training_data = x_training_data_sort_by_residual[:k]
+        current_stage_y_training_data = y_training_data_sort_by_residual[:k]
 
     # thinking
     saver.save(sess, r"C:\Users\Lee Chia Lun\PycharmProjects\autoencoder\softening_learning\model.ckpt")
