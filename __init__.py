@@ -2,7 +2,10 @@ import tensorflow as tf
 import numpy as np
 import time
 import random
+import os
 
+
+dir_path = os.path.dirname(os.path.realpath(__file__))
 execute_start_time = time.time()
 
 x_training_data = np.loadtxt("binary_training_input_data.txt", dtype=float, delimiter=" ")
@@ -88,7 +91,7 @@ for k in range(1, data_size + 1):
         current_stage_y_training_data = y_training_data_sort_by_residual[:k]
 
     # thinking
-    saver.save(sess, r"C:\Users\Lee Chia Lun\PycharmProjects\autoencoder\softening_learning\model.ckpt")
+    saver.save(sess, r"{0}/model.ckpt".format(dir_path))
     for i in range(1000):
         sess.run(train, feed_dict={x_placeholder: current_stage_x_training_data, y_placeholder: current_stage_y_training_data, tau_placeholder: tau_in_each_hidden_node})
         current_average_squared_residual = sess.run([average_squared_residual], {x_placeholder: current_stage_x_training_data, y_placeholder: current_stage_y_training_data, tau_placeholder: tau_in_each_hidden_node})
@@ -108,26 +111,34 @@ for k in range(1, data_size + 1):
     predict_y = sess.run([output_layer],
                          {x_placeholder: current_stage_x_training_data, y_placeholder: current_stage_y_training_data,
                           tau_placeholder: tau_in_each_hidden_node})
-    alpha = tf.double.max
-    beta = tf.double.min
+
     # for node in tf.get_default_graph().as_graph_def().node:
     #     print(node.name)
     print(predict_y)
+    # check condition L
+    class_1_output = [tf.double.max]
+    class_2_output = [tf.double.min]
+    last_one_is_class_1 = False
     it = np.nditer(predict_y, flags=['f_index'])
     i = 1
     while not it.finished:
         if current_stage_y_training_data[it.index] == 1:
-            if it[0] < alpha:
-                alpha = it[0]
-                if not i == k:
-                    min_predict_value_in_class_one_of_previous_stage_training_case = alpha
-        if current_stage_y_training_data[it.index] == -1:
-            if it[0] > beta:
-                beta = it[0]
-                if not i == k:
-                    max_predict_value_in_class_two_of_previous_stage_training_case = beta
+            class_1_output.append(it[0])
+            if i == k:
+                last_one_is_class_1 = True
+        else:  # if current_stage_y_training_data[it.index] == -1:
+            class_2_output.append(it[0])
         i += 1
         it.iternext()
+    alpha, beta = tool_sess.run(
+        [min_alpha, max_beta], {tool_alpha: class_1_output, tool_beta: class_2_output})
+    if last_one_is_class_1:
+        class_1_output = class_1_output[:-1]
+    else:
+        class_2_output = class_2_output[:-1]
+    min_predict_value_in_class_one_of_previous_stage_training_case, \
+    max_predict_value_in_class_two_of_previous_stage_training_case = tool_sess.run(
+        [min_alpha, max_beta], {tool_alpha: class_1_output, tool_beta: class_2_output})
     print('alpha= ' + str(alpha))
     print('beta= ' + str(beta))
 
@@ -205,7 +216,7 @@ for k in range(1, data_size + 1):
 
             # softening
             # save variables
-            saver.save(sess, r"C:\Users\Lee Chia Lun\PycharmProjects\autoencoder\softening_learning\model.ckpt")
+            saver.save(sess, r"{0}/model.ckpt".format(dir_path))
 
             # change tau value of newest hidden node
             newest_hidden_node_tau_value = tau_in_each_hidden_node[hidden_node_amount-1]
@@ -225,10 +236,8 @@ for k in range(1, data_size + 1):
                     # print(predict_y)
 
                     # check condition L
-                    alpha = tf.double.max
-                    beta = tf.double.min
-                    class_1_output = []
-                    class_2_output = []
+                    class_1_output = [tf.double.max]
+                    class_2_output = [tf.double.min]
                     it = np.nditer(predict_y, flags=['f_index'])
                     while not it.finished:
                         if current_stage_y_training_data[it.index] == 1:
@@ -244,7 +253,7 @@ for k in range(1, data_size + 1):
                     if alpha > beta:
                         print('softening success, gradient descent trained {0} times, #{1} tau value decrease by 1, current tau value: {2}'.format(i, hidden_node_amount, newest_hidden_node_tau_value))
                         softening_success = True
-                        saver.save(sess, r"C:\Users\Lee Chia Lun\PycharmProjects\autoencoder\softening_learning\model.ckpt")
+                        saver.save(sess, r"{0}/model.ckpt".format(dir_path))
                         break
                     else:
                         sess.run(train, feed_dict={x_placeholder: current_stage_x_training_data, y_placeholder: current_stage_y_training_data, tau_placeholder: tau_in_each_hidden_node})
@@ -253,7 +262,7 @@ for k in range(1, data_size + 1):
                     print('softening failed, gradient descent trained {0} times, restore #{1} tau value , restore tau value: {2}'.format(
                             i, hidden_node_amount, newest_hidden_node_tau_value+1))
                     tau_in_each_hidden_node[hidden_node_amount - 1] = newest_hidden_node_tau_value+1
-                    saver.restore(sess, r"C:\Users\Lee Chia Lun\PycharmProjects\autoencoder\softening_learning\model.ckpt")
+                    saver.restore(sess, r"{0}/model.ckpt".format(dir_path))
                     break
 
             # PRUNING
@@ -334,10 +343,8 @@ for k in range(1, data_size + 1):
                     )
 
                     # check if exam_alpha & exam_beta match condition L
-                    exam_alpha = tf.double.max
-                    exam_beta = tf.double.min
-                    class_1_output = []
-                    class_2_output = []
+                    class_1_output = [tf.double.max]
+                    class_2_output = [tf.double.min]
 
                     it = np.nditer(exam_predict_y, flags=['f_index'])
                     while not it.finished:
