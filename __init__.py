@@ -74,11 +74,10 @@ for k in range(1, data_size + 1):
                              {x_placeholder: x_training_data,
                               y_placeholder: y_training_data,
                               tau_placeholder: tau_in_each_hidden_node})
-        # print(predict_y[0])
-        # print(x_training_data)
-        # print(y_training_data.reshape((data_size, output_node_amount)))
-        concat_residual_and_x = np.concatenate((predict_y[0], x_training_data), axis=1)
-        concat_residual_and_y = np.concatenate((predict_y[0], y_training_data.reshape((data_size, output_node_amount))), axis=1)
+        squared_residuals = np.square(predict_y[0] - y_training_data.reshape((-1, 1)))
+        # print(squared_residuals)
+        concat_residual_and_x = np.concatenate((squared_residuals, x_training_data), axis=1)
+        concat_residual_and_y = np.concatenate((squared_residuals, y_training_data.reshape((data_size, output_node_amount))), axis=1)
         sort_concat_x = concat_residual_and_x[np.argsort(concat_residual_and_x[:, 0])]
         sort_concat_y = concat_residual_and_y[np.argsort(concat_residual_and_y[:, 0])]
         x_training_data_sort_by_residual = np.delete(sort_concat_x, 0, axis=1)
@@ -89,6 +88,8 @@ for k in range(1, data_size + 1):
         # print(y_training_data_sort_by_residual)
         current_stage_x_training_data = x_training_data_sort_by_residual[:k]
         current_stage_y_training_data = y_training_data_sort_by_residual[:k]
+        # print(current_stage_x_training_data)
+        # print(current_stage_y_training_data)
 
     # thinking
     saver.save(sess, r"{0}/model.ckpt".format(dir_path))
