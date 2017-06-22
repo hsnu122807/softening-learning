@@ -8,8 +8,13 @@ import os
 dir_path = os.path.dirname(os.path.realpath(__file__))
 execute_start_time = time.time()
 
-x_training_data = np.loadtxt("binary_training_input_data.txt", dtype=float, delimiter=" ")
-y_training_data = np.loadtxt("binary_training_output_data.txt", dtype=float, delimiter=" ")
+# file_input = "binary_training_input_data"
+# file_output = "binary_training_output_data"
+data_amount = '1000'
+file_input = "tensorflow_binary_input_" + data_amount
+file_output = "tensorflow_binary_output_" + data_amount
+x_training_data = np.loadtxt(file_input + ".txt", dtype=float, delimiter=" ")
+y_training_data = np.loadtxt(file_output + ".txt", dtype=float, delimiter=" ")
 tau_in_each_hidden_node = np.array([1.0])
 
 # Network Parameters
@@ -19,7 +24,7 @@ output_node_amount = 1
 learning_rate_eta = 0.01
 
 # Parameters
-thinking_times = 1000
+thinking_times = 5000
 data_size = x_training_data.shape[0]
 big_number = 15
 
@@ -99,7 +104,7 @@ for k in range(1, data_size + 1):
 
     # for node in tf.get_default_graph().as_graph_def().node:
     #     print(node.name)
-    print(predict_y)
+    # print(predict_y)
     # check condition L
     class_1_output = [tf.double.max]
     class_2_output = [tf.double.min]
@@ -123,8 +128,7 @@ for k in range(1, data_size + 1):
         class_2_output = class_2_output[:-1]
     min_predict_value_in_class_one_of_previous_stage_training_case, max_predict_value_in_class_two_of_previous_stage_training_case = tool_sess.run(
         [min_alpha, max_beta], {tool_alpha: class_1_output, tool_beta: class_2_output})
-    print('alpha= ' + str(alpha))
-    print('beta= ' + str(beta))
+    print('alpha = {0}   beta = {1}'.format(alpha, beta))
 
     if alpha > beta:
         print('new training case is familiar to us, no further learning effort involved.')
@@ -238,6 +242,25 @@ for k in range(1, data_size + 1):
                 sess = tf.Session()
                 sess.run(init)
 
+                # save current alpha & beta
+                predict_y = sess.run([output_layer], {x_placeholder: current_stage_x_training_data,
+                                                      y_placeholder: current_stage_y_training_data,
+                                                      tau_placeholder: tau_in_each_hidden_node})
+                # print(predict_y)
+
+                # check condition L
+                class_1_output = [tf.double.max]
+                class_2_output = [tf.double.min]
+                it = np.nditer(predict_y, flags=['f_index'])
+                while not it.finished:
+                    if current_stage_y_training_data[it.index] == 1:
+                        class_1_output.append(it[0])
+                    else:  # if current_stage_y_training_data[it.index] == -1:
+                        class_2_output.append(it[0])
+                    it.iternext()
+                alpha, beta = tool_sess.run(
+                    [min_alpha, max_beta], {tool_alpha: class_1_output, tool_beta: class_2_output})
+
                 # softening
                 # save variables
                 saver.save(sess, r"{0}/model.ckpt".format(dir_path))
@@ -252,7 +275,7 @@ for k in range(1, data_size + 1):
                     print(tau_in_each_hidden_node)
                     softening_success = False
 
-                    for i in range(1000):
+                    for i in range(thinking_times):
                         # forward pass
                         predict_y = sess.run([output_layer], {x_placeholder: current_stage_x_training_data,
                                                               y_placeholder: current_stage_y_training_data,
@@ -269,12 +292,14 @@ for k in range(1, data_size + 1):
                             else:  # if current_stage_y_training_data[it.index] == -1:
                                 class_2_output.append(it[0])
                             it.iternext()
-                        alpha, beta = tool_sess.run(
+                        test_alpha, test_beta = tool_sess.run(
                             [min_alpha, max_beta], {tool_alpha: class_1_output, tool_beta: class_2_output})
 
                         # print(alpha)
                         # print(beta)
-                        if alpha > beta:
+                        if test_alpha > test_beta:
+                            alpha = test_alpha
+                            beta = test_beta
                             print(
                                 'softening success, gradient descent trained {0} times, #{1} tau value decrease by 1, current tau value: {2}'.format(
                                     i, hidden_node_amount, newest_hidden_node_tau_value))
@@ -405,6 +430,8 @@ for k in range(1, data_size + 1):
                             print('*' * 10)
                             continue
                         else:
+                            alpha = exam_alpha
+                            beta = exam_beta
                             print("pruning current hidden node #{0} won't violate condition L".format(remove_index))
                             print("!!!!! REMOVE hidden node #{0} !!!!!".format(remove_index))
                             print('*' * 10)
@@ -431,3 +458,27 @@ for k in range(1, data_size + 1):
                             # modify constant
                             tau_in_each_hidden_node = exam_tau
                             break
+    if k == data_size:
+        new_path = r"{0}/".format(dir_path)+file_output
+        if not os.path.exists(new_path):
+            os.makedirs(new_path)
+        curr_hidden_neuron_weight, curr_hidden_threshold, curr_output_neuron_weight, curr_output_threshold, curr_average_loss, curr_output = sess.run(
+            [hidden_weights, hidden_thresholds,
+             output_weights, output_threshold, average_squared_residual,
+             output_layer], {x_placeholder: x_training_data, y_placeholder: y_training_data, tau_placeholder: tau_in_each_hidden_node})
+        np.savetxt(new_path + r"\hidden_neuron_weight.txt", curr_hidden_neuron_weight)
+        np.savetxt(new_path + r"\hidden_threshold.txt", curr_hidden_threshold)
+        np.savetxt(new_path + r"\output_neuron_weight.txt", curr_output_neuron_weight)
+        np.savetxt(new_path + r"\output_threshold.txt", curr_output_threshold)
+        file = open(new_path + r"\_training_detail.txt", 'w')
+        file.writelines("learning_rate: " + str(learning_rate_eta) + "\n")
+        file.writelines("input_node_amount: " + str(input_node_amount) + "\n")
+        file.writelines("hidden_node_amount: " + str(hidden_node_amount) + "\n")
+        file.writelines("output_node_amount: " + str(output_node_amount) + "\n")
+        file.writelines("training_data_amount: " + str(data_size) + "\n")
+        file.writelines("average_loss_of_the_model: " + str(curr_average_loss) + "\n")
+        file.writelines("alpha(class 1 min value): " + str(alpha) + "\n")
+        file.writelines("beta(class 2 max value): " + str(beta) + "\n")
+        file.writelines("total execution time: " + str(time.time() - execute_start_time) + " seconds" + "\n")
+        file.close()
+        print("--- execution time: %s seconds ---" % (time.time() - execute_start_time))
