@@ -10,7 +10,7 @@ execute_start_time = time.time()
 
 # file_input = "binary_training_input_data"
 # file_output = "binary_training_output_data"
-data_amount = '1000'
+data_amount = '10000'
 file_input = "tensorflow_binary_input_" + data_amount
 file_output = "tensorflow_binary_output_" + data_amount
 x_training_data = np.loadtxt(file_input + ".txt", dtype=float, delimiter=" ")
@@ -27,6 +27,12 @@ learning_rate_eta = 0.01
 thinking_times = 5000
 data_size = x_training_data.shape[0]
 big_number = 15
+
+# counters
+thinking_times_count = 0
+cramming_times_count = 0
+softening_thinking_times_count = 0
+pruning_success_times_count = 0
 
 # placeholders
 x_placeholder = tf.placeholder(tf.float64)
@@ -141,6 +147,7 @@ for k in range(1, data_size + 1):
             sess.run(train, feed_dict={x_placeholder: current_stage_x_training_data,
                                        y_placeholder: current_stage_y_training_data,
                                        tau_placeholder: tau_in_each_hidden_node})
+            thinking_times_count += 1
             predict_y = sess.run([output_layer],
                                  {x_placeholder: current_stage_x_training_data,
                                   y_placeholder: current_stage_y_training_data,
@@ -175,6 +182,7 @@ for k in range(1, data_size + 1):
         if thinking_failed:
             # cram it first
             print('start cramming')
+            cramming_times_count += 1
             # calculate relevant parameters
             hidden_node_amount += 1
             current_hidden_weights, current_hidden_thresholds, current_output_weights, current_output_threshold, = sess.run(
@@ -310,6 +318,7 @@ for k in range(1, data_size + 1):
                             sess.run(train, feed_dict={x_placeholder: current_stage_x_training_data,
                                                        y_placeholder: current_stage_y_training_data,
                                                        tau_placeholder: tau_in_each_hidden_node})
+                            softening_thinking_times_count += 1
 
                     if not softening_success:
                         print(
@@ -432,6 +441,7 @@ for k in range(1, data_size + 1):
                         else:
                             alpha = exam_alpha
                             beta = exam_beta
+                            pruning_success_times_count += 1
                             print("pruning current hidden node #{0} won't violate condition L".format(remove_index))
                             print("!!!!! REMOVE hidden node #{0} !!!!!".format(remove_index))
                             print('*' * 10)
@@ -470,6 +480,7 @@ for k in range(1, data_size + 1):
         np.savetxt(new_path + r"\hidden_threshold.txt", curr_hidden_threshold)
         np.savetxt(new_path + r"\output_neuron_weight.txt", curr_output_neuron_weight)
         np.savetxt(new_path + r"\output_threshold.txt", curr_output_threshold)
+        np.savetxt(new_path + r"\tau_in_each_hidden_node.txt", tau_in_each_hidden_node)
         file = open(new_path + r"\_training_detail.txt", 'w')
         file.writelines("learning_rate: " + str(learning_rate_eta) + "\n")
         file.writelines("input_node_amount: " + str(input_node_amount) + "\n")
@@ -479,6 +490,10 @@ for k in range(1, data_size + 1):
         file.writelines("average_loss_of_the_model: " + str(curr_average_loss) + "\n")
         file.writelines("alpha(class 1 min value): " + str(alpha) + "\n")
         file.writelines("beta(class 2 max value): " + str(beta) + "\n")
+        file.writelines("thinking_times_count: " + str(thinking_times_count) + "\n")
+        file.writelines("cramming_times_count: " + str(cramming_times_count) + "\n")
+        file.writelines("softening_thinking_times_count: " + str(softening_thinking_times_count) + "\n")
+        file.writelines("pruning_success_times_count: " + str(pruning_success_times_count) + "\n")
         file.writelines("total execution time: " + str(time.time() - execute_start_time) + " seconds" + "\n")
         file.close()
         print("--- execution time: %s seconds ---" % (time.time() - execute_start_time))
