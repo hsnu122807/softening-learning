@@ -21,10 +21,10 @@ tau_in_each_hidden_node = np.array([1.0])
 input_node_amount = x_training_data.shape[1]
 hidden_node_amount = 1
 output_node_amount = 1
-learning_rate_eta = 0.01
+learning_rate_eta = 0.001
 
 # Parameters
-thinking_times = 50
+thinking_times = 5000
 data_size = x_training_data.shape[0]
 big_number = 15
 
@@ -126,7 +126,7 @@ for k in range(1, data_size + 1):
 
     # for node in tf.get_default_graph().as_graph_def().node:
     #     print(node.name)
-    # print(predict_y)
+    print(predict_y)
     # check condition L
     class_1_output = [tf.double.max]
     class_2_output = [tf.double.min]
@@ -197,7 +197,7 @@ for k in range(1, data_size + 1):
                     print('thinking failed: after {0} times training, alpha still smaller than beta.'.format((stage + 1)))
                     # MUST restore before cramming(因為調權重可能會讓先前的資料違反condition L)
                     print('restore weights.')
-                    saver.restore(sess, r"C:\Users\Lee Chia Lun\PycharmProjects\autoencoder\softening_learning\model.ckpt")
+                    saver.restore(sess, r"{0}/model.ckpt".format(dir_path))
 
         if thinking_failed:
             # cram it first
@@ -209,6 +209,10 @@ for k in range(1, data_size + 1):
                 [hidden_weights, hidden_thresholds, output_weights, output_threshold],
                 {x_placeholder: current_stage_x_training_data, y_placeholder: current_stage_y_training_data,
                  tau_placeholder: tau_in_each_hidden_node})
+            predict_y = sess.run([output_layer],
+                                 {x_placeholder: current_stage_x_training_data,
+                                  y_placeholder: current_stage_y_training_data,
+                                  tau_placeholder: tau_in_each_hidden_node})
             print('current hidden weights:')
             print(current_hidden_weights)
             print('current hidden thresholds:')
@@ -227,13 +231,12 @@ for k in range(1, data_size + 1):
             print(new_hidden_node_threshold)
             # calculate new output weight
             if current_stage_y_training_data[k - 1] == 1:
-                # 幹你的 這兩種都不對 到底???
-                # 研究stage52到底為啥會錯
-                # 難道還要判斷大小然後大減小???????
-                # new_output_node_neuron_weight = predict_y[0][k - 1] - max_predict_value_in_class_two_of_previous_stage_training_case
+                # 錯的原因已發現 因為上一個版本thinking完 在model restore之後沒有重新取predict y的值 導致運算出錯
+                # new_output_node_neuron_weight = predict_y[0][k - 1] - max_predict_value_in_class_two_of_previous_stage_training_case  # 估計真的是錯的
                 new_output_node_neuron_weight = max_predict_value_in_class_two_of_previous_stage_training_case - predict_y[0][k - 1]
             if current_stage_y_training_data[k - 1] == -1:
-                new_output_node_neuron_weight = min_predict_value_in_class_one_of_previous_stage_training_case - predict_y[0][k - 1]
+                # new_output_node_neuron_weight = min_predict_value_in_class_one_of_previous_stage_training_case - predict_y[0][k - 1]
+                new_output_node_neuron_weight = predict_y[0][k - 1] - min_predict_value_in_class_one_of_previous_stage_training_case
             print('predict value of most recent training case: ' + str(predict_y[0][k - 1]))
             print('new output weight:')
             print(new_output_node_neuron_weight)
