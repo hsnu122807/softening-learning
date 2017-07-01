@@ -40,11 +40,11 @@ y_placeholder = tf.placeholder(tf.float64)
 tau_placeholder = tf.placeholder(tf.float64)
 
 # network architecture
-output_threshold = tf.Variable(tf.zeros([output_node_amount], dtype=tf.float64))
-output_weights = tf.Variable(tf.ones([hidden_node_amount, output_node_amount], dtype=tf.float64))
+output_threshold = tf.Variable(tf.random_normal([output_node_amount], dtype=tf.float64))
+output_weights = tf.Variable(tf.random_normal([hidden_node_amount, output_node_amount], dtype=tf.float64))
 tau_in_each_hidden_node = np.tile(tau_in_each_hidden_node, (hidden_node_amount, 1))
-hidden_thresholds = tf.Variable(tf.zeros([hidden_node_amount], dtype=tf.float64))
-hidden_weights = tf.Variable(tf.ones([input_node_amount, hidden_node_amount], dtype=tf.float64))
+hidden_thresholds = tf.Variable(tf.random_normal([hidden_node_amount], dtype=tf.float64))
+hidden_weights = tf.Variable(tf.random_normal([input_node_amount, hidden_node_amount], dtype=tf.float64))
 
 hidden_layer_before_tanh = tf.add(tf.matmul(x_placeholder, hidden_weights), hidden_thresholds)
 hidden_layer = tf.tanh(
@@ -213,22 +213,22 @@ for k in range(1, data_size + 1):
                                  {x_placeholder: current_stage_x_training_data,
                                   y_placeholder: current_stage_y_training_data,
                                   tau_placeholder: tau_in_each_hidden_node})
-            print('current hidden weights:')
-            print(current_hidden_weights)
-            print('current hidden thresholds:')
-            print(current_hidden_thresholds)
-            print('current output weights:')
-            print(current_output_weights)
-            print('current output threshold:')
-            print(current_output_threshold)
+            # print('current hidden weights:')
+            # print(current_hidden_weights)
+            # print('current hidden thresholds:')
+            # print(current_hidden_thresholds)
+            # print('current output weights:')
+            # print(current_output_weights)
+            # print('current output threshold:')
+            # print(current_output_threshold)
             # calculate new hidden weight
             new_hidden_node_neuron_weights = current_stage_x_training_data[k - 1]
-            print('new hidden weights:')
-            print(new_hidden_node_neuron_weights)
+            # print('new hidden weights:')
+            # print(new_hidden_node_neuron_weights)
             # calculate new hidden threshold
             new_hidden_node_threshold = 1 - input_node_amount
-            print('new hidden thresholds:')
-            print(new_hidden_node_threshold)
+            # print('new hidden thresholds:')
+            # print(new_hidden_node_threshold)
             # calculate new output weight
             if current_stage_y_training_data[k - 1] == 1:
                 # 錯的原因已發現 因為上一個版本thinking完 在model restore之後沒有重新取predict y的值 導致運算出錯
@@ -237,9 +237,9 @@ for k in range(1, data_size + 1):
             if current_stage_y_training_data[k - 1] == -1:
                 # new_output_node_neuron_weight = min_predict_value_in_class_one_of_previous_stage_training_case - predict_y[0][k - 1]
                 new_output_node_neuron_weight = predict_y[0][k - 1] - min_predict_value_in_class_one_of_previous_stage_training_case
-            print('predict value of most recent training case: ' + str(predict_y[0][k - 1]))
-            print('new output weight:')
-            print(new_output_node_neuron_weight)
+            # print('predict value of most recent training case: ' + str(predict_y[0][k - 1]))
+            # print('new output weight:')
+            # print(new_output_node_neuron_weight)
 
             # combine weights & thresholds
             new_hidden_weights = np.append(current_hidden_weights,
